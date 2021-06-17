@@ -61,3 +61,9 @@ Animals.deleteAnimal = function(config) {
 
 var AnimalsService = createServiceFactory(Animals);
 ```
+
+## Documenting
+
+A markdown file is generated from inline JSDoc comments for each service. These will automatically update when a service's JSDoc changes.
+
+The CONTRIBUTING.md should be updated for each change. Unreleased changed can be organized under an "Unreleased" heading at the top of the changelog until a new release is made.
