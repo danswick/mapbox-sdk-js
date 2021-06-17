@@ -25,14 +25,16 @@ var Static = {};
  * @param {string} config.styleId - The map's style ID.
  * @param {number} config.width - Width of the image in pixels, between 1 and 1280.
  * @param {number} config.height - Height of the image in pixels, between 1 and 1280.
- * @param {'auto'|Object} config.position - If `"auto"`, the viewport will fit the
- *   bounds of the overlay(s). Otherwise, the maps' position is described by an object
- *   with the following properties:
+ * @param {'auto'|Object} config.position - If `"auto"`, the viewport will fit the bounds of the overlay(s).
+ *  If an object, it could be either a bbox or a coordinate and a zoom as the required parameters.  
+ *  ` bbox` (required): Is an array of coordinate pairs, with the first coordinate pair referring to the southwestern
+ *  corner of the box (the minimum longitude and latitude) and the second referring to the northeastern corner of the box (the maximum longitude and latitude).
+ *  Otherwise the maps' position is described by an object with the following properties:
  *   `coordinates` (required): [`coordinates`](#coordinates) for the center of image.
  *   `zoom` (required): Between 0 and 20.
  *   `bearing` (optional): Between 0 and 360.
  *   `pitch` (optional): Between 0 and 60.
- *
+ * @param {string} config.padding - a string that can only be used sometimes
  * @param {Array<Overlay>} [config.overlays] - Overlays should be in z-index
  *   order: the first in the array will be on the bottom; the last will be on
  *   the top. Overlays are objects that match one of the following types:
@@ -69,6 +71,23 @@ var Static = {};
  *     const image = response.body;
  *   });
  *
+ * @example
+ * staticClient.getStaticImage({
+ *   ownerId: 'mapbox',
+ *   styleId: 'streets-v11',
+ *   width: 200,
+ *   height: 300,
+ *   position: {
+ *     // position as a bounding box
+ *     bbox: [-77.04,38.8,-77.02,38.91],
+ *   }, 
+ *  padding: '4'
+ * })
+ *   .send()
+ *   .then(response => {
+ *     const image = response.body;
+ *   });
+ * 
  * @example
  * staticClient.getStaticImage({
  *   ownerId: 'mapbox',
@@ -183,9 +202,11 @@ Static.getStaticImage = function(config) {
           zoom: v.required(v.range([0, 20])),
           bearing: v.range([0, 360]),
           pitch: v.range([0, 60])
-        })
+        }),
+        v.strictShape({ bbox: v.required(v.arrayOf(v.number)) })
       )
     ),
+    padding: v.number,
     overlays: v.arrayOf(v.plainObject),
     highRes: v.boolean,
     before_layer: v.string,
@@ -237,6 +258,9 @@ Static.getStaticImage = function(config) {
   if (config.layer_id !== undefined) {
     query.layer_id = config.layer_id;
   }
+  if (config.padding !== undefined) {
+    query.padding = config.padding;
+  }
 
   if (config.setfilter !== undefined && config.layer_id === undefined) {
     throw new Error('Must include layer_id in setfilter request');
@@ -258,6 +282,32 @@ Static.getStaticImage = function(config) {
     );
   }
 
+  if (
+    config.padding !== undefined
+  ) {
+    throw new Error(
+      'Padding can only be used with auto or bbox as the position.'
+    );
+  }
+  if (
+    config.position !== 'auto'
+  ) {
+    throw new Error(
+      'Padding can only be used with auto or bbox as the position.'
+    );
+  }
+  if (
+    config.position.bbox === undefined
+  ) {
+    throw new Error(
+      'Padding can only be used with auto or bbox as the position.'
+    );
+  }
+
+  if (config.position.bbox !== undefined && config.position.bbox.length !== 4) {
+    throw new Error('bbox must be four coordinates');
+  }
+
   return this.client.createRequest({
     method: 'GET',
     path: '/styles/v1/:ownerId/:styleId/static/' + preEncodedUrlParts,
@@ -269,6 +319,7 @@ Static.getStaticImage = function(config) {
 
 function encodePosition(position) {
   if (position === 'auto') return 'auto';
+  if (position.bbox) return JSON.stringify(position.bbox);
 
   return position.coordinates
     .concat([
