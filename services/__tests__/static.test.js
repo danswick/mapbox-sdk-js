@@ -39,7 +39,7 @@ describe('getStaticImage', () => {
     });
   });
 
-  /* test('bbox', () => {
+  test('bbox', () => {
     service.getStaticImage({
       ownerId: 'mapbox',
       styleId: 'streets-v10',
@@ -57,7 +57,7 @@ describe('getStaticImage', () => {
       params: { ownerId: 'mapbox', styleId: 'streets-v10' },
       encoding: 'binary'
     });
-  }); */
+  });
 
   test('bbox with inaccurate numbers of coordinates ', () => {
     expect(() =>
